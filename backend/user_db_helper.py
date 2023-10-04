@@ -28,9 +28,7 @@ def get_last_batch_id(db_path):
     with sqlite3.connect(db_path) as db:
         batch_ids = db.execute("select batch_id from batches").fetchall()
     res = [x[0] for x in batch_ids]
-    if not res:
-        return -1
-    return max(res)
+    return -1 if not res else max(res)
 
 
 def get_processed_batch_ids(db_path):
@@ -340,7 +338,7 @@ def get_alignments_list(username, lang_from, lang_to):
     """Get alignments list by language code"""
     db_path = os.path.join(con.UPLOAD_FOLDER, username, con.USER_DB_NAME)
     with sqlite3.connect(db_path) as db:
-        res = db.execute(
+        return db.execute(
             """select
                                 a.guid, a.name, a.guid_from, a.guid_to, a.state, a.curr_batches, a.total_batches, a.proxy_from_loaded, a.proxy_to_loaded
                             from alignments a
@@ -349,13 +347,12 @@ def get_alignments_list(username, lang_from, lang_to):
                                 and a.deleted <> 1""",
             {"lang_from": lang_from, "lang_to": lang_to},
         ).fetchall()
-        return res
 
 
 def get_version(db_path):
     """Get user database version"""
     with sqlite3.connect(db_path) as db:
-        res = db.execute(f"select v.version from version v").fetchone()
+        res = db.execute("select v.version from version v").fetchone()
     return res[0]
 
 
@@ -466,6 +463,4 @@ def process_uploaded_alignment(align_db_path, username):
         print(error_text)
         return (error_text, 400)
 
-    langs = {"items": [lang_from, lang_to]}
-
-    return langs
+    return {"items": [lang_from, lang_to]}

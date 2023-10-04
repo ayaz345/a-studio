@@ -63,21 +63,14 @@ def items(username, lang):
             alignment_path = os.path.join(temp_folder, f"{align_guid}.db")
             file.save(alignment_path)
 
-            res = user_db_helper.process_uploaded_alignment(alignment_path, username)
-
-            return res
-
+            return user_db_helper.process_uploaded_alignment(alignment_path, username)
         elif lang in request.files:
             file = request.files[lang]
             upload_folder = con.RAW_FOLDER
             filename = file.filename
             direction = request.form.get("direction", "from")
             clean_text = request.form.get("clean_text", False)
-            if clean_text == "true":
-                clean_text = True
-            else:
-                clean_text = False
-
+            clean_text = clean_text == "true"
             if request.form["type"] != "proxy" and user_db_helper.file_exists(
                 username, lang, filename
             ):
@@ -311,31 +304,28 @@ def bulk_add_alignment_mark(username, align_guid):
     )
     db_path = os.path.join(db_folder, f"{align_guid}.db")
 
-    raw_info = request.form.get("rawInfo", "")
-
-    if raw_info:
-        text_info = raw_info.split("\n")
-        info = [
-            (x.split(",")[0], x.split(",")[1], x.split(",")[2])
-            for x in text_info
-            if len(x.split(",")) > 2
-        ]
-        info.sort(key=lambda x: x[1])
-        for i in range(0, len(info), 2):
-            if i + 1 < len(info):
-                helper.add_meta(
-                    db_path,
-                    preprocessor.IMAGE,
-                    info[i][0],
-                    info[i + 1][0],
-                    info[i][1],
-                    info[i + 1][1],
-                    info[i][2],
-                    info[i + 1][2],
-                )
-    else:
+    if not (raw_info := request.form.get("rawInfo", "")):
         return ("invalid parameters", 400)
 
+    text_info = raw_info.split("\n")
+    info = [
+        (x.split(",")[0], x.split(",")[1], x.split(",")[2])
+        for x in text_info
+        if len(x.split(",")) > 2
+    ]
+    info.sort(key=lambda x: x[1])
+    for i in range(0, len(info), 2):
+        if i + 1 < len(info):
+            helper.add_meta(
+                db_path,
+                preprocessor.IMAGE,
+                info[i][0],
+                info[i + 1][0],
+                info[i][1],
+                info[i + 1][1],
+                info[i][2],
+                info[i + 1][2],
+            )
     return ("", 200)
 
 
@@ -545,8 +535,8 @@ def start_alignment(username):
     batch_ids = misc.parse_json_array(request.form.get("batch_ids", "[0]"))
     batch_shift, _ = misc.try_parse_int(request.form.get("batch_shift", 0))
     window, _ = misc.try_parse_int(request.form.get("window", config.DEFAULT_WINDOW))
-    use_proxy_from = True if request.form.get("use_proxy_from", "") == "true" else False
-    use_proxy_to = True if request.form.get("use_proxy_to", "") == "true" else False
+    use_proxy_from = request.form.get("use_proxy_from", "") == "true"
+    use_proxy_to = request.form.get("use_proxy_to", "") == "true"
 
     logging.info(
         f"align parameters align_guid {align_guid} align_all {align_all} batch_ids {batch_ids}, batch_shift {batch_shift}"
@@ -669,8 +659,8 @@ def align_next_batch(username):
     ) = user_db_helper.get_alignment_info(username, align_guid)
     _, lang_from = user_db_helper.get_alignment_fileinfo_from(username, guid_from)
     _, lang_to = user_db_helper.get_alignment_fileinfo_to(username, guid_to)
-    use_proxy_from = True if request.form.get("use_proxy_from", "") == "true" else False
-    use_proxy_to = True if request.form.get("use_proxy_to", "") == "true" else False
+    use_proxy_from = request.form.get("use_proxy_from", "") == "true"
+    use_proxy_to = request.form.get("use_proxy_to", "") == "true"
 
     db_folder = os.path.join(
         con.UPLOAD_FOLDER, username, con.DB_FOLDER, lang_from, lang_to
@@ -782,9 +772,9 @@ def get_alignment_conflicts(username, align_guid, handle_edges):
         abort(404)
 
     handle_start, handle_finish = False, False
-    if handle_edges == "start" or handle_edges == "both":
+    if handle_edges in ["start", "both"]:
         handle_start = True
-    if handle_edges == "finish" or handle_edges == "both":
+    if handle_edges in ["finish", "both"]:
         handle_finish = True
 
     conflicts, rest = resolver.get_all_conflicts(
@@ -828,9 +818,9 @@ def show_alignment_conflict(username, align_guid, id, handle_edges):
         abort(404)
 
     handle_start, handle_finish = False, False
-    if handle_edges == "start" or handle_edges == "both":
+    if handle_edges in ["start", "both"]:
         handle_start = True
-    if handle_edges == "finish" or handle_edges == "both":
+    if handle_edges in ["finish", "both"]:
         handle_finish = True
 
     conflicts, rest = resolver.get_all_conflicts(
@@ -872,10 +862,10 @@ def resolve_conflicts(username):
     )
     db_path = os.path.join(db_folder, f"{align_guid}.db")
     user_db_path = os.path.join(con.UPLOAD_FOLDER, username, con.USER_DB_NAME)
-    use_proxy_from = True if request.form.get("use_proxy_from", "") == "true" else False
-    use_proxy_to = True if request.form.get("use_proxy_to", "") == "true" else False
-    handle_start = True if request.form.get("handle_start", "") == "true" else False
-    handle_finish = True if request.form.get("handle_finish", "") == "true" else False
+    use_proxy_from = request.form.get("use_proxy_from", "") == "true"
+    use_proxy_to = request.form.get("use_proxy_to", "") == "true"
+    handle_start = request.form.get("handle_start", "") == "true"
+    handle_finish = request.form.get("handle_finish", "") == "true"
 
     # exit if batch ids is empty
     batch_ids = [x for x in batch_ids if x < total_batches][:total_batches]
@@ -981,12 +971,9 @@ def get_processing_by_ids(username, lang_from, lang_to, align_guid):
     index_ids = misc.parse_json_array(request.form.get("index_ids", "[]"))
 
     index_items = [(index[i], i) for i in index_ids]
-    res = {}
     data, proxy_from_dict, proxy_to_dict = helper.get_doc_items(index_items, db_path)
 
-    for i, item in zip(index_ids, data):
-        res[i] = item
-
+    res = dict(zip(index_ids, data))
     return {
         "items": res,
         "proxy_from_dict": proxy_from_dict,
@@ -1116,17 +1103,12 @@ def get_processing_candidates(
 
     while index_id > 0:
         print("line_ids", line_ids)
-        if not line_ids:
-            index_id -= 1
-            line_ids = misc.parse_json_array(index[index_id][direction])
-        else:
+        if line_ids:
             break
 
-    if not line_ids or index_id == 0:
-        line_id = 1
-    else:
-        line_id = line_ids[0]
-
+        index_id -= 1
+        line_ids = misc.parse_json_array(index[index_id][direction])
+    line_id = 1 if not line_ids or index_id == 0 else line_ids[0]
     id_from = line_id - count_before + shift
     id_to = line_id + count_after + shift
 
@@ -1295,12 +1277,13 @@ def list_processing(username, lang_from, lang_to):
         con.UPLOAD_FOLDER, username, con.PROCESSING_FOLDER, lang_from, lang_to
     )
     misc.check_folder(processing_folder)
-    files = {
+    return {
         "items": {
-            lang_from: misc.get_processing_list_with_state(username, lang_from, lang_to)
+            lang_from: misc.get_processing_list_with_state(
+                username, lang_from, lang_to
+            )
         }
     }
-    return files
 
 
 @app.route(
@@ -1498,10 +1481,8 @@ def route_frontend(path):
     file_path = os.path.join(app.static_folder, path)
     if os.path.isfile(file_path):
         return send_file(file_path)
-    # ...or should be handled by the SPA's "router" in front end
-    else:
-        index_path = os.path.join(app.static_folder, "index.html")
-        return send_file(index_path)
+    index_path = os.path.join(app.static_folder, "index.html")
+    return send_file(index_path)
 
 
 if __name__ == "__main__":

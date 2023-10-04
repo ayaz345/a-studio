@@ -64,7 +64,7 @@ class AlignmentProcessor:
         """Add batches with string arrays for the further processing"""
         for i, task in enumerate(task_list):
             self.queue_in.put((i, task))
-        for i in range(self.proc_count):
+        for _ in range(self.proc_count):
             self.queue_in.put((-1, FINISH_PROCESS))
         self.tasks_count = len(task_list)
 
@@ -92,7 +92,7 @@ class AlignmentProcessor:
                         self.resolve_batch_wrapper(*task)
 
                 except Exception as e:
-                    print("task failed. " + str(e))
+                    print(f"task failed. {str(e)}")
                     queue_out.put("error")
 
     def handle_result(self, queue_out):

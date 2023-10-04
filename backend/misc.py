@@ -28,50 +28,44 @@ def get_files_list_with_path(folder, mask="*.txt"):
 
 def get_processing_list_with_state(username, lang_from, lang_to):
     """Get processing docs list with states"""
-    res = []
-    for (
-        guid,
-        name,
-        guid_from,
-        guid_to,
-        state_code,
-        done_batches,
-        total_batches,
-        proxy_from_loaded,
-        proxy_to_loaded,
-    ) in user_db_helper.get_alignments_list(username, lang_from, lang_to):
-        res.append(
-            {
-                "guid": guid,
-                "name": name,
-                "guid_from": guid_from,
-                "guid_to": guid_to,
-                "state": (state_code, total_batches, done_batches),
-                "proxy_from_loaded": proxy_from_loaded,
-                "proxy_to_loaded": proxy_to_loaded
-                # "imgs": get_files_list(os.path.join(con.STATIC_FOLDER, con.IMG_FOLDER, username), mask=f"{guid}.best_*.png"),
-                # "sim_grades": get_sim_grades(file)
-            }
+    return [
+        {
+            "guid": guid,
+            "name": name,
+            "guid_from": guid_from,
+            "guid_to": guid_to,
+            "state": (state_code, total_batches, done_batches),
+            "proxy_from_loaded": proxy_from_loaded,
+            "proxy_to_loaded": proxy_to_loaded
+            # "imgs": get_files_list(os.path.join(con.STATIC_FOLDER, con.IMG_FOLDER, username), mask=f"{guid}.best_*.png"),
+            # "sim_grades": get_sim_grades(file)
+        }
+        for guid, name, guid_from, guid_to, state_code, done_batches, total_batches, proxy_from_loaded, proxy_to_loaded in user_db_helper.get_alignments_list(
+            username, lang_from, lang_to
         )
-    return res
+    ]
 
 
 def get_raw_files(username, lang_code):
     """Get uploaded raw files list"""
-    res = []
-    for file, guid, _ in user_db_helper.get_documents_list(username, lang_code):
-        res.append(
-            {
-                "name": file,
-                "guid": guid,
-                "has_proxy": os.path.isfile(
-                    os.path.join(
-                        con.UPLOAD_FOLDER, username, con.PROXY_FOLDER, lang_code, file
-                    )
-                ),
-            }
+    return [
+        {
+            "name": file,
+            "guid": guid,
+            "has_proxy": os.path.isfile(
+                os.path.join(
+                    con.UPLOAD_FOLDER,
+                    username,
+                    con.PROXY_FOLDER,
+                    lang_code,
+                    file,
+                )
+            ),
+        }
+        for file, guid, _ in user_db_helper.get_documents_list(
+            username, lang_code
         )
-    return res
+    ]
 
 
 def get_sim_grades(processing_file):
@@ -215,7 +209,7 @@ def configure_logging(level=logging.INFO):
 
 def lazy_property(func):
     """"Lazy initialization attribute"""
-    attr_name = "_lazy_" + func.__name__
+    attr_name = f"_lazy_{func.__name__}"
 
     @property
     def _lazy_property(self):
