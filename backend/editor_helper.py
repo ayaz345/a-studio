@@ -37,9 +37,9 @@ def add_empty_processing_line(db, batch_id):
 def switch_excluded_splitted_to(db_path, id):
     """Mark splitted_to line as unused"""
     with sqlite3.connect(db_path) as db:
-        exclude = db.execute("select exclude from splitted_to where id=:id", {
-            "id": id}).fetchone()
-        if exclude:
+        if exclude := db.execute(
+            "select exclude from splitted_to where id=:id", {"id": id}
+        ).fetchone():
             db.execute('update splitted_to set exclude=:exclude where id=:id', {
                 "exclude": (exclude[0] + 1) % 2, "id": id})
     return
@@ -48,9 +48,9 @@ def switch_excluded_splitted_to(db_path, id):
 def switch_excluded_splitted_from(db_path, id):
     """Mark splitted_from line as unused"""
     with sqlite3.connect(db_path) as db:
-        exclude = db.execute("select exclude from splitted_from where id=:id", {
-            "id": id}).fetchone()
-        if exclude:
+        if exclude := db.execute(
+            "select exclude from splitted_from where id=:id", {"id": id}
+        ).fetchone():
             db.execute('update splitted_from set exclude=:exclude where id=:id', {
                 "exclude": (exclude[0] + 1) % 2, "id": id})
     return
@@ -75,27 +75,33 @@ def get_candidates_page(db_path, text_type, id_from, id_to):
     res = []
     with sqlite3.connect(db_path) as db:
         if text_type == con.TYPE_FROM:
-            for id, splitted, proxy in db.execute(
-                '''SELECT
+            res.extend(
+                {"id": id, "text": splitted, "proxy": proxy}
+                for id, splitted, proxy in db.execute(
+                    '''SELECT
                     sf.id, sf.text, sf.proxy_text
                 FROM
                     splitted_from sf
                 WHERE
                     sf.id >= :id_from and sf.id <= :id_to
-                ''', {"id_from": id_from, "id_to": id_to}
-            ):
-                res.append({"id": id, "text": splitted, "proxy": proxy})
+                ''',
+                    {"id_from": id_from, "id_to": id_to},
+                )
+            )
         elif text_type == con.TYPE_TO:
-            for id, splitted, proxy in db.execute(
-                '''SELECT
+            res.extend(
+                {"id": id, "text": splitted, "proxy": proxy}
+                for id, splitted, proxy in db.execute(
+                    '''SELECT
                     st.id, st.text, st.proxy_text
                 FROM
                     splitted_to st
                 WHERE
                     st.id >= :id_from and st.id <= :id_to
-                ''', {"id_from": id_from, "id_to": id_to}
-            ):
-                res.append({"id": id, "text": splitted, "proxy": proxy})
+                ''',
+                    {"id_from": id_from, "id_to": id_to},
+                )
+            )
     return res
 
 
